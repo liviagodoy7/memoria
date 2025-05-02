@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Memória - Séries</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #000000;
+            color: #822c2c;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            margin: 20px 0;
+            font-size: 2.5rem;
+            text-align: center;
+            color: #cf1c1c;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .info-box {
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #740505;
+        }
+
+        .memory-game {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .memory-card {
+            width: 100%;
+            height: 120px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .memory-card:active {
+            transform: scale(0.97);
+        }
+
+        .memory-card.flip {
+            transform: rotateY(180deg);
+        }
+
+        .memory-card.matched {
+            transform: rotateY(180deg);
+            cursor: default;
+            box-shadow: 0 0 10px 5px rgba(106, 48, 147, 0.5);
+        }
+
+        .front-face,
+        .back-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .front-face {
+            transform: rotateY(180deg);
+        }
+
+        .back-face {
+            background: linear-gradient(135deg, #a00404, #740505);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .restart-btn {
+            margin-top: 30px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #740505, #b61717);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .restart-btn:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            .memory-game {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .memory-card {
+                height: 100px;
+            }
+        }
+
+        .celebration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #b61717bd;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            display: none;
+        }
+
+        .celebration h2 {
+            color: white;
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .celebration p {
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Jogo da Memória - Séries</h1>
+    
+    
+    <div class="game-info">
+        <div class="info-box">
+            <div class="info-label">Movimentos</div>
+            <div class="info-value" id="moves">0</div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">Tempo</div>
+            <div class="info-value" id="time">0s</div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">Pares</div>
+            <div class="info-value" id="pairs">0/8</div>
+        </div>
+    </div>
+    <br><br>
+    <div class="memory-game" id="memory-game"></div>
+    
+    <button class="restart-btn" id="restart-btn">Reiniciar Jogo</button>
+    
+    <div class="celebration" id="celebration">
+        <h2>Parabéns!</h2>
+        <p>Você completou o jogo em <span id="final-moves">0</span> movimentos e <span id="final-time">0</span> segundos!</p>
+        <button class="restart-btn" id="celebrate-restart">Jogar Novamente</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Configuração do jogo
+            const cards = [
+                { name: 'PLL', img: 'pll.jpg' },
+                { name: 'Outer Banks', img: 'outer.jpg' },
+                { name: 'Riverdale', img: 'riverdale.jpg' },
+                { name: 'Sabrina', img: 'sabrina.jpg' },
+                { name: 'Shadowhunters', img: 'shadowhunters.jpg' },
+                { name: 'Stranger Things', img: 'stranger.jpg' },
+                { name: 'Teen Wolf', img: 'teenWolf.jpg' },
+                { name: 'You', img: 'You.jpg' },
+                { name: 'PLL', img: 'pll.jpg' },
+                { name: 'Outer Banks', img: 'outer.jpg' },
+                { name: 'Riverdale', img: 'riverdale.jpg' },
+                { name: 'Sabrina', img: 'sabrina.jpg' },
+                { name: 'Shadowhunters', img: 'shadowhunters.jpg' },
+                { name: 'Stranger Things', img: 'stranger.jpg' },
+                { name: 'Teen Wolf', img: 'teenWolf.jpg' },
+                { name: 'You', img: 'You.jpg' }
+               
+            ];
+
+            // Variáveis do jogo
+            let hasFlippedCard = false;
+            let lockBoard = false;
+            let firstCard, secondCard;
+            let moves = 0;
+            let matchedPairs = 0;
+            let timer;
+            let seconds = 0;
+            let gameStarted = false;
+
+            // Elementos DOM
+            const memoryGame = document.getElementById('memory-game');
+            const movesDisplay = document.getElementById('moves');
+            const pairsDisplay = document.getElementById('pairs');
+            const timeDisplay = document.getElementById('time');
+            const restartBtn = document.getElementById('restart-btn');
+            const celebration = document.getElementById('celebration');
+            const finalMoves = document.getElementById('final-moves');
+            const finalTime = document.getElementById('final-time');
+            const celebrateRestart = document.getElementById('celebrate-restart');
+
+            // Inicializar o jogo
+            function initGame() {
+                // Embaralhar cartas
+                const shuffledCards = shuffle([...cards]);
+                
+                // Criar tabuleiro
+                memoryGame.innerHTML = '';
+                shuffledCards.forEach((card, index) => {
+                    const memoryCard = document.createElement('div');
+                    memoryCard.classList.add('memory-card');
+                    memoryCard.dataset.name = card.name;
+                    memoryCard.dataset.index = index;
+                    
+                    memoryCard.innerHTML = `
+                        <img class="front-face" src="${card.img}" alt="${card.name}">
+                        <div class="back-face"></div>
+                    `;
+                    
+                    memoryCard.addEventListener('click', flipCard);
+                    memoryGame.appendChild(memoryCard);
+                });
+                
+                // Resetar variáveis
+                hasFlippedCard = false;
+                lockBoard = false;
+                moves = 0;
+                matchedPairs = 0;
+                seconds = 0;
+                gameStarted = false;
+                
+                // Atualizar display
+                movesDisplay.textContent = moves;
+                pairsDisplay.textContent = `${matchedPairs}/${cards.length/2}`;
+                timeDisplay.textContent = `${seconds}s`;
+                
+                // Parar temporizador anterior se existir
+                if (timer) clearInterval(timer);
+            }
+
+            // Embaralhar array (Fisher-Yates algorithm)
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            // Virar carta
+            function flipCard() {
+                if (lockBoard) return;
+                if (this === firstCard) return;
+                if (this.classList.contains('matched')) return;
+                
+                // Iniciar temporizador no primeiro movimento
+                if (!gameStarted) {
+                    startTimer();
+                    gameStarted = true;
+                }
+                
+                this.classList.add('flip');
+                
+                if (!hasFlippedCard) {
+                    // Primeiro clique
+                    hasFlippedCard = true;
+                    firstCard = this;
+                    return;
+                }
+                
+                // Segundo clique
+                secondCard = this;
+                moves++;
+                movesDisplay.textContent = moves;
+                
+                checkForMatch();
+            }
+
+            // Verificar se as cartas são iguais
+            function checkForMatch() {
+                const isMatch = firstCard.dataset.name === secondCard.dataset.name;
+                
+                if (isMatch) {
+                    disableCards();
+                    matchedPairs++;
+                    pairsDisplay.textContent = `${matchedPairs}/${cards.length/2}`;
+                    
+                    // Verificar se o jogo terminou
+                    if (matchedPairs === cards.length/2) {
+                        endGame();
+                    }
+                } else {
+                    unflipCards();
+                }
+            }
+
+            // Desativar cartas quando formar par
+            function disableCards() {
+                firstCard.classList.add('matched');
+                secondCard.classList.add('matched');
+                
+                resetBoard();
+            }
+
+            // Desvirar cartas quando não formar par
+            function unflipCards() {
+                lockBoard = true;
+                
+                setTimeout(() => {
+                    firstCard.classList.remove('flip');
+                    secondCard.classList.remove('flip');
+                    
+                    resetBoard();
+                }, 1000);
+            }
+
+            // Resetar tabuleiro
+            function resetBoard() {
+                [hasFlippedCard, lockBoard] = [false, false];
+                [firstCard, secondCard] = [null, null];
+            }
+
+            // Iniciar temporizador
+            function startTimer() {
+                timer = setInterval(() => {
+                    seconds++;
+                    timeDisplay.textContent = `${seconds}s`;
+                }, 1000);
+            }
+
+            // Finalizar jogo
+            function endGame() {
+                clearInterval(timer);
+                
+                // Mostrar celebração
+                finalMoves.textContent = moves;
+                finalTime.textContent = seconds;
+                celebration.style.display = 'flex';
+            }
+
+            // Event listeners
+            restartBtn.addEventListener('click', initGame);
+            celebrateRestart.addEventListener('click', () => {
+                celebration.style.display = 'none';
+                initGame();
+            });
+
+            // Iniciar o jogo quando a página carrega
+            initGame();
+        });
+    </script>
+</body>
+</html>
